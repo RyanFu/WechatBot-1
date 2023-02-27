@@ -1,10 +1,14 @@
+import configparser
 import datetime
 import os
-import re
-import requests
-from httpcli.output import *
-import configparser
 import random
+import re
+from urllib.parse import urlparse
+
+import requests
+from zhdate import ZhDate as lunar_date
+
+from httpcli.output import *
 
 # 读取本地的配置文件
 current_path = os.path.dirname(__file__)
@@ -25,6 +29,9 @@ morning_url = config.get("apiService", "morning_url")
 ai_reply_url = config.get("apiService", "ai_reply_url")
 after_work_time = config.get("server", "after_work_time")
 salary_day = config.get("server", "salary_day")
+threatbook_key = config.get("apiService", "threatbook_key")
+threatbook_url = config.get("apiService", "threatbook_url")
+fofamap = config.get("apiService", "fofamap")
 
 
 # 获取历史的今天事件
@@ -199,9 +206,9 @@ def get_Funny_jokes():
         )
         if resp.status_code == 200 and resp.json()["code"] == 1:
             msg = (
-                resp.json()["data"]["list"][content_num]["content"]
-                + "\n\n更新时间："
-                + resp.json()["data"]["list"][content_num]["updateTime"]
+                    resp.json()["data"]["list"][content_num]["content"]
+                    + "\n\n更新时间："
+                    + resp.json()["data"]["list"][content_num]["updateTime"]
             )
         else:
             msg = f"ERROR：接口请求请求异常，接口状态：{resp.status_code},错误信息：{resp.json()['msg']}"
@@ -237,8 +244,10 @@ def get_morning_info():
     output("Get morning info")
     try:
         resp = requests.get(morning_url, timeout=5, verify=False)
-        if resp.status_code == 200 and resp.json()["code"] == 1:
-            msg = resp.json()["data"][0]["content"]
+        if resp.status_code == 200 and resp.json()["code"] == 200:
+            msg = resp.json()["data"]["content"]
+        else:
+            msg = f"未获取到早安寄语，接口返回信息：{resp.json()}"
     except Exception as e:
         output(f"ERROR：{e}")
         msg = f"早安寄语接口调用出错，ERROR：{e}"
@@ -307,31 +316,146 @@ def get_time():
         return "上午好"
     elif time.localtime().tm_hour == 12:
         return "中午好"
+    elif 12 < time.localtime().tm_hour < 18:
+        return "下午好"
     else:
         return "晚上好"
 
 
 # 摸鱼日历
 def Touch_the_fish():
+    # 获取每年除夕的阳历日期
+    New_Year = (
+            str(int(time.strftime("%Y")) + 1)
+            + "-"
+            + str(lunar_date(int(time.strftime("%Y")), 12, 30).to_datetime().month)
+            + "-"
+            + str(lunar_date(int(time.strftime("%Y")), 12, 30).to_datetime().day)
+    )
     week_list = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
     time_now = time.strftime("%Y-%m-%d")
     timeNow = time.strftime("%Y-%m-%d %X")
     New_Year_Day = str(int(time.strftime("%Y")) + 1) + "-01-01"
-    salary_Day = (
-        str(int(time.strftime("%Y")))
-        + "-"
-        + str(int(time.strftime("%m")) + 1)
-        + "-"
-        + str(salary_day)
-    )
+    if int(time.strftime("%d")) > int(salary_day):
+        if int(time.strftime("%m")) == 12:
+            salary_Day = (
+                    str(int(time.strftime("%Y")) + 1)
+                    + "-01-"
+                    + str(salary_day)
+            )
+        else:
+            salary_Day = (
+                    str(int(time.strftime("%Y")))
+                    + "-"
+                    + str(int(time.strftime("%m")) + 1)
+                    + "-"
+                    + str(salary_day)
+            )
+    else:
+        salary_Day = (
+                str(int(time.strftime("%Y")))
+                + "-"
+                + str(int(time.strftime("%m")))
+                + "-"
+                + str(salary_day)
+        )
     epidemic_Day = "2019-12-16"
-    National_Day = str(int(time.strftime("%Y")) + 1) + "-10-01"
+    if int(time.strftime("%m")) > 10 and int(time.strftime("%d")) > 1:
+        National_Day = str(int(time.strftime("%Y")) + 1) + "-10-01"
+    else:
+        National_Day = str(int(time.strftime("%Y"))) + "-10-01"
     after_work = f"{time_now} {after_work_time}:00"
     if (
-        diff_hour(timeNow, after_work)[0] >= 0
-        and diff_hour(timeNow, after_work)[1] >= 0
+            diff_hour(timeNow, after_work)[0] >= 0
+            and diff_hour(timeNow, after_work)[1] >= 0
+            and int(datetime.date.today().isoweekday()) < 6
     ):
-        msg = f'【摸鱼办】提醒您：\n🍁今天是{time.strftime("%m")}月{time.strftime("%d")}日 {week_list[int(datetime.date.today().isoweekday())-1]}\n👨‍💻{get_time()}摸鱼人！工作再累，一定不要忘记喝水哦！希望此刻看到消息的人可以和我一起来喝一杯水。及时排便洗手，记得关门。一小时后我会继续提醒大家喝水，和我一起成为一天喝八杯水的人吧！\n══════════\n🚇距离下班还有：{diff_hour(timeNow, after_work)[0]}小时{diff_hour(timeNow, after_work)[1]}分钟\n💰距离发工资还有：{diff_day(time_now, salary_Day)}天\n🍁距离元旦还有：{diff_day(time_now, New_Year_Day)}天\n🏮距离国庆还有：{diff_day(time_now, National_Day)}天\n⌚距离疫情开始：{diff_day(epidemic_Day, time_now)}天\n══════════\n有事没事起身去茶水间，去厕所，去廊道走走别老在工位上坐着。上班是帮老板赚钱，摸鱼是赚老板的钱！最后，祝愿天下所有摸鱼人，都能愉快的渡过每一天💪'
+        msg = f'【摸鱼办】提醒您：\n🍁今天是{time.strftime("%m")}月{time.strftime("%d")}日 {week_list[int(datetime.date.today().isoweekday()) - 1]}\n👨‍💻{get_time()}摸鱼人！工作再累，一定不要忘记喝水哦！希望此刻看到消息的人可以和我一起来喝一杯水。及时排便洗手，记得关门。一小时后我会继续提醒大家喝水，和我一起成为一天喝八杯水的人吧！\n══════════\n🚇距离下班还有：{diff_hour(timeNow, after_work)[0]}小时{diff_hour(timeNow, after_work)[1]}分钟\n💰距离发工资还有：{diff_day(time_now, salary_Day)}天\n🍁距离元旦还有：{diff_day(time_now, New_Year_Day)}天\n🏮距离除夕还有：{diff_day(time_now, New_Year)}天\n🚩距离国庆还有：{diff_day(time_now, National_Day)}天\n⌚距离疫情开始：{diff_day(epidemic_Day, time_now)}天\n══════════\n有事没事起身去茶水间，去厕所，去廊道走走别老在工位上坐着。上班是帮老板赚钱，摸鱼是赚老板的钱！最后，祝愿天下所有摸鱼人，都能愉快的渡过每一天💪'
+    elif (
+            int(datetime.date.today().isoweekday()) == 6
+            or int(datetime.date.today().isoweekday()) == 7
+    ):
+        msg = "都双休日了还摸什么鱼，快滚去睡觉！"
     else:
         msg = "各部门请注意，下班时间已过！！！请滚，不要浪费电费，记得发日报！\n[Doge] over"
+    return msg
+
+
+# 恶意IP查询
+def search_ip(ips):
+    output(f"查询ip：{ips}")
+    try:
+
+        data = {
+            "apikey": threatbook_key,
+            "resource": ips,
+        }
+
+        resp = requests.post(
+            threatbook_url,
+            data=data,
+            timeout=10,
+            verify=False,
+        )
+        if resp.status_code == 200 and resp.json()["response_code"] == 0:
+            # 查风险等级
+            sec_level = resp.json()["data"]["{}".format(ips)]["severity"]
+            # 查是否恶意IP
+            is_malicious = resp.json()["data"]["{}".format(ips)]["is_malicious"]
+            # 查可信度
+            confidence_level = resp.json()["data"]["{}".format(ips)]["confidence_level"]
+            # 查IP归属国家
+            country = resp.json()["data"]["{}".format(ips)]["basic"]["location"][
+                "country"
+            ]
+            # 查IP归属省份
+            province = resp.json()["data"]["{}".format(ips)]["basic"]["location"][
+                "province"
+            ]
+            # 查IP归属城市
+            city = resp.json()["data"]["{}".format(ips)]["basic"]["location"]["city"]
+            # 将IP归属的国家、省份、城市合并成一个字符串
+            location = country + "-" + province + "-" + city
+            # 查威胁类型
+            judgments = ""
+            for j in resp.json()["data"]["{}".format(ips)]["judgments"]:
+                judgments += j + " "
+            if is_malicious:
+                is_malicious_msg = "是"
+            else:
+                is_malicious_msg = "否"
+            msg = f"===================\n[+]ip：{ips}\n[+]风险等级：{sec_level}\n[+]是否为恶意ip：{is_malicious_msg}\n[+]可信度：{confidence_level}\n[+]威胁类型：{str(judgments)}\n[+]ip归属地：{location}\n更新时间：{resp.json()['data']['{}'.format(ips)]['update_time']}\n==================="
+        else:
+            msg = f"查询失败，返回信息：{resp.json()['verbose_msg']}"
+            output(f"ERROR：{msg}")
+    except Exception as e:
+        output(f"ERROR: {e}")
+        msg = f"查询出错请稍后重试，错误信息：{e}"
+    return msg
+
+
+# 端口扫描
+def PortScan(ip=None):
+    port = ""
+    try:
+        if ip is None:
+            output(f"ip is Node")
+        else:
+            ip = urlparse(ip).path or urlparse(ip).netloc
+            resp = requests.get(fofamap + str(ip), timeout=10, verify=False)
+            if resp.status_code == 200 and 'error' not in resp.json():
+                data = resp.json()
+                result = f"查询ip：{data['ip']}\n推荐fofa查询语句\nip='{data['ip']}'\n"
+                if len(data['domain']) > 1:
+                    result += f"domain='{data['domain']}'\n"
+                for a in data['ports']:
+                    port += f"{str(a['port'])}-{str(a['protocol'])}\n"
+                result += f"----端口&协议----\n{port}"
+                result += "\nCreated by zhizhuo\n端口扫描数据来自：\nhttps://amap.fofa.info/"
+                msg = result
+            else:
+                msg = "未查询到"
+    except Exception as e:
+        output(f"Error：{e}")
+        msg = f"端口扫描出错，错误信息：{e}"
     return msg
