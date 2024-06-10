@@ -1,13 +1,11 @@
-from servercli.server import *
-from httpcli.output import *
-from httpcli.everyday_news import *
-from servercli.server import *
-import configparser
+import colorama
 import schedule
-from multiprocessing import Process
-import datetime
 from pyfiglet import Figlet
 
+from servercli.server import *
+
+# 解决cmd样式问题
+colorama.init(autoreset=True)
 
 # 读取本地的配置文件
 current_path = os.path.dirname(__file__)
@@ -68,8 +66,8 @@ def everyday_morning_push():
 def everyday_fish_push():
     output("今日摸鱼日历推送")
     if (
-        int(datetime.date.today().isoweekday()) == 6
-        or int(datetime.date.today().isoweekday()) == 7
+            int(datetime.date.today().isoweekday()) == 6
+            or int(datetime.date.today().isoweekday()) == 7
     ):
         pass
     else:
@@ -82,8 +80,8 @@ def everyday_fish_push():
 def everyday_after_work_push():
     output("下班通知推送")
     if (
-        int(datetime.date.today().isoweekday()) == 6
-        or int(datetime.date.today().isoweekday()) == 7
+            int(datetime.date.today().isoweekday()) == 6
+            or int(datetime.date.today().isoweekday()) == 7
     ):
         msg = ""
     else:
@@ -107,7 +105,7 @@ def tomato_after_work_push():
 def auto_push():
     output("每日定时任务 Strat")
     # 今日黄历推送
-    schedule.every().day.at(set_time_am_today).do(everyday_zodiac_push)
+    # schedule.every().day.at(set_time_am_today).do(everyday_zodiac_push)
     # 早安寄语
     # schedule.every().day.at(set_time_am_today).do(everyday_morning_push)
     # 早报自动推送
@@ -119,7 +117,7 @@ def auto_push():
     # 晚报自动推送
     schedule.every().day.at(set_time_pm).do(evening_paper_push)
     # 下班通知推送
-    schedule.every().day.at(after_work_time).do(everyday_after_work_push)
+    # schedule.every().day.at(after_work_time).do(everyday_after_work_push)
     # 番茄下班专属通知推送
     # schedule.every().day.at("21:00").do(tomato_after_work_push)
     while True:
@@ -129,10 +127,10 @@ def auto_push():
 def main():
     output("WechatBot Run ....")
     get_personal_info()
-    processed = Process(target=auto_push, name="Auto push")
-    # 进程守护，主进程结束子进程也要结束
-    processed.daemon = True
-    processed.start()
+    # processed = Process(target=auto_push, name="Auto push")
+    # # 进程守护，主进程结束子进程也要结束
+    # processed.daemon = True
+    # processed.start()
     bot()
 
 

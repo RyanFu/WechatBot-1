@@ -17,6 +17,7 @@ config = configparser.ConfigParser()  # 类实例化
 config.read(config_path, encoding="utf-8")
 History_url = config.get("apiService", "history_url")
 md5_url = config.get("apiService", "md5_url")
+cmd5_url = config.get("apiService", "cmd5_url")
 dog_url = config.get("apiService", "dog_url")
 fart_url = config.get("apiService", "fart_url")
 girl_videos_url = config.get("apiService", "girl_videos_url")
@@ -32,6 +33,18 @@ salary_day = config.get("server", "salary_day")
 threatbook_key = config.get("apiService", "threatbook_key")
 threatbook_url = config.get("apiService", "threatbook_url")
 fofamap = config.get("apiService", "fofamap")
+
+user_agent_list = [
+    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; WOW64) Gecko/20100101 Firefox/61.0",
+    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36",
+    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)",
+    "Mozilla/5.0 (Macintosh; U; PPC Mac OS X 10.5; en-US; rv:1.9.2.15) Gecko/20110303 Firefox/3.6.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36",
+]
 
 
 # 获取历史的今天事件
@@ -147,7 +160,7 @@ def get_md5(self):
             pmd5_url = str(md5_url) + str(md5_list[1])
             resp = requests.get(pmd5_url, timeout=5, verify=False)
             if resp.status_code == 200 and len(resp.json()["result"]) > 0:
-                msg = "\n密文：{}\nMD5解密结果为：{}".format(
+                msg = "密文：{}\nMD5解密结果为：{}".format(
                     str(md5_list[1]),
                     resp.json()["result"]["{}".format(str(md5_list[1]))],
                 )
@@ -160,6 +173,57 @@ def get_md5(self):
             pass
     except Exception as e:
         msg = "PMD5解密接口调用出错，错误信息：{}".format(e)
+    return msg
+
+
+def get_cmd5(self):
+    output("Get CMD5 Clear")
+    headers = {
+        'User-Agent': user_agent_list[random.randint(0, len(user_agent_list) - 1)],
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache',
+        'Connection': 'close',
+    }
+    try:
+        cmd5_list = self.split(":")
+        cmd5_list = self.split("：")
+        cmd5_list = self.split(" ")
+        if len(cmd5_list) > 1 and len(cmd5_list[1]) > 5:
+            base_cmd5_url = str(cmd5_url) + str(cmd5_list[1])
+            resp = requests.get(url=base_cmd5_url, headers=headers, timeout=20, verify=False)
+            if resp.status_code == 200 and 0 < len(resp.text) < 10240 and 'CMD5-ERROR' not in resp.text:
+                msg = f"密文：{str(cmd5_list[1])}\nMD5解密结果为：{resp.text}"
+
+            elif 'CMD5-ERROR:0' in resp.text:
+                msg = "CMD5解密失败"
+            elif 'CMD5-ERROR:-1' in resp.text:
+                msg = "CMD5解密失败，无效的用户名密码"
+            elif 'CMD5-ERROR:-2' in resp.text:
+                msg = "CMD5解密失败，账户余额不足"
+            elif 'CMD5-ERROR:-3' in resp.text:
+                msg = "CMD5解密失败，解密服务器故障"
+            elif 'CMD5-ERROR:-4' in resp.text:
+                msg = "CMD5解密失败，不识别的密文"
+            elif 'CMD5-ERROR:-7' in resp.text:
+                msg = "CMD5解密失败，不支持的类型"
+            elif 'CMD5-ERROR:-8' in resp.text:
+                msg = "CMD5解密失败，api权限被禁止"
+            elif 'CMD5-ERROR:-9' in resp.text:
+                msg = "CMD5解密失败，条数超过200条"
+            elif 'CMD5-ERROR:-999' in resp.text:
+                msg = "CMD5解密失败，其它错误"
+            elif resp.status_code != 200:
+                msg = f"CMD5解密接口站点异常，站点状态：{resp.status_code}"
+            else:
+                msg = f"CMD5解密失败，发生位置错误，错误信息：{resp.text}"
+        else:
+            msg = "请使用语句cmd5解密 密文"
+            pass
+    except Exception as e:
+        msg = "CMD5解密接口调用出错，错误信息：{}".format(e)
     return msg
 
 
@@ -360,7 +424,7 @@ def Touch_the_fish():
                 + str(salary_day)
         )
     epidemic_Day = "2019-12-16"
-    if int(time.strftime("%m")) > 10 and int(time.strftime("%d")) > 1:
+    if int(time.strftime("%m")) >= 10 and int(time.strftime("%d")) >= 1:
         National_Day = str(int(time.strftime("%Y")) + 1) + "-10-01"
     else:
         National_Day = str(int(time.strftime("%Y"))) + "-10-01"

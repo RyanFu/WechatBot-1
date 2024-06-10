@@ -1,11 +1,14 @@
 import configparser
 import os
 import re
+import warnings
 
 import feedparser
 import requests
 
 from httpcli.output import *
+
+warnings.filterwarnings('ignore')
 
 # 读取本地的配置文件
 current_path = os.path.dirname(__file__)
@@ -16,6 +19,7 @@ xz_url = config.get("apiService", "xz_url")
 freebuf_url = config.get("apiService", "freebuf_url")
 qax_url = config.get("apiService", "qax_url")
 anquanke_url = config.get("apiService", "anquanke_url")
+y4tacker_url = config.get("apiService", "y4tacker_url")
 
 news_list = ""
 # 全局header头
@@ -85,8 +89,8 @@ def get_freebuf_news():
                     url_f = rs1.entries[buf]["link"]
                     title_f = (
                         rs1.entries[buf]["title_detail"]["value"]
-                            .replace("FreeBuf早报 |", "")
-                            .replace(" ", "")
+                        .replace("FreeBuf早报 |", "")
+                        .replace(" ", "")
                     )
                     link4 = "\n" + title_f + "\n" + url_f + "\n"
                     str_list += link4
@@ -150,11 +154,11 @@ def get_anquanke_news():
         rs1.encoding = "utf-8"
         resp_text = (
             rs1.text.replace("\xa9", "")
-                .replace("\n", "")
-                .replace("&gt;", "")
-                .replace(" ", "")
-                .replace("                        ", "")
-                .replace("                               ", "")
+            .replace("\n", "")
+            .replace("&gt;", "")
+            .replace(" ", "")
+            .replace("                        ", "")
+            .replace("                               ", "")
         )
         newlist = re.findall(
             '<divclass="info-content"><divclass="title"><atarget="_blank"rel="noopenernoreferrer"href="(.*?)">(.*?)</a></div><divclass="tagshide-in-mobile-device">',
@@ -190,6 +194,45 @@ def get_anquanke_news():
         return "安全客 is no ok"
 
 
+# Y4tacker Blog
+def get_y4tacker_news():
+    global news_list
+    str_list = ""
+    news_list += "\n#Y4tacker Blog"
+    # today = datetime.date.today()
+    # yesterday = today - datetime.timedelta(days=1)
+    # formatted_yesterday = yesterday.strftime("%Y-%m-%d")
+    try:
+        rs1 = feedparser.parse(y4tacker_url)
+        length = len(rs1.entries)
+        for buf in range(length):
+            try:
+                # print(time.strftime("%Y-%m-%d"))
+                # print(formatted_yesterday)
+                # print(time.strftime("%Y-%m-%d %H:%M:%S", rs1.entries[buf]["published_parsed"]))
+                if str(time.strftime("%Y-%m-%d")) in str(
+                        time.strftime("%Y-%m-%d %H:%M:%S", rs1.entries[buf]["updated_parsed"])):
+                    url_f = rs1.entries[buf]['links'][0]['href']
+                    title_f = rs1.entries[buf]["title"]
+                    link4 = "\n" + title_f + "\n" + url_f + "\n"
+                    str_list += link4
+                else:
+                    pass
+            except Exception as e:
+                output("ERROR：{}".format(e))
+                break
+        if len(str_list) > 0:
+            news_list += str_list
+        else:
+            link6 = "\n今日暂无文章"
+            news_list += link6
+    except Exception as e:
+        link6 = "\n今日暂无文章"
+        news_list += link6
+        output("ERROR：Y4tacker Blog {}".format(e))
+        return "Y4tacker Blog is no ok"
+
+
 def get_safety_news():
     output("GET safety News")
     global news_list
@@ -198,6 +241,12 @@ def get_safety_news():
     # get_freebuf_news()
     # get_qax_news()
     get_anquanke_news()
+    get_y4tacker_news()
     output("获取成功")
     news_list += "\nCreated by zhizhuo \n{}".format(time.strftime("%Y-%m-%d %X"))
     return news_list
+
+
+if __name__ == "__main__":
+    news = get_safety_news()
+    print(news)
